@@ -871,7 +871,8 @@ client.on("interactionCreate", async interaction => {
     }
     if(action==="start"){
       if(interaction.user.id!==l.host) return interaction.reply({content:"❌ غير الـ Host يقدر يبدأ.",ephemeral:true});
-      if(l.players.length<2) return interaction.reply({content:"❌ خاص جوج لاعبين على الأقل.",ephemeral:true});
+      if(l.game==="mafia" && l.players.length<5) return interaction.reply({content:"❌ خاص Mafia على الأقل 5 لاعبين باش تبدا.",ephemeral:true});
+      if(l.game!=="mafia" && l.players.length<2) return interaction.reply({content:"❌ خاص جوج لاعبين على الأقل.",ephemeral:true});
       l.started=true;
       await interaction.update({embeds:[visualLobbyEmbed(l)],components:[visualLobbyRows(l.id,true)]});
       let n=5; const msg=await interaction.channel.send(`⏳ اللعبة غادي تبدا بعد **${n}**...`);
