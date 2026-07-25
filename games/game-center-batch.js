@@ -1,11 +1,11 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = require('./board-games');
 const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
 const { startArcadeGame, handleArcadeInteraction, arcadeEmbed, arcadeComponents } = require('./arcade-games');
 const { handleSoloMessage } = require('./solo-games');
 const channelConfig = require('./channel-config');
 
-// GAMINGHUB_BATCH_V4
+// GAMINGHUB_BATCH_V5
 const lobbies = new Map();
 const games = new Map();
 
@@ -55,7 +55,29 @@ function lobbyButtons(id) {
   );
 }
 
+function channelConfigCommand() {
+  return {
+    name: 'gamechannels',
+    description: 'تحديد القنوات المسموح فيها بألعاب GamingHub',
+    default_member_permissions: PermissionFlagsBits.Administrator.toString(),
+    options: [
+      { type: 1, name: 'set', description: 'تحديد القنوات المسموح فيها', options: [
+        ...Array.from({ length: 10 }, (_, i) => ({ type: 7, name: `channel${i + 1}`, description: `القناة ${i + 1}`, required: i === 0, channel_types: [ChannelType.GuildText, ChannelType.GuildAnnouncement] }))
+      ] },
+      { type: 1, name: 'list', description: 'عرض القنوات المحددة' },
+      { type: 1, name: 'clear', description: 'إلغاء تحديد القنوات والسماح في جميع القنوات' }
+    ]
+  };
+}
+
 function setupGameCenterBatch(client) {
+  client.once('ready', async () => {
+    try {
+      await client.application.commands.create(channelConfigCommand());
+      console.log('✅ /gamechannels registered');
+    } catch (error) { console.error('Game channel command registration error:', error); }
+  });
+
   client.on('messageCreate', async message => {
     try {
       if (!message.guildId || !channelConfig.isAllowed(message.guildId, message.channelId)) return;
@@ -65,7 +87,33 @@ function setupGameCenterBatch(client) {
   });
 
   client.on('interactionCreate', async interaction => {
-    if (!interaction.guildId || !channelConfig.isAllowed(interaction.guildId, interaction.channelId)) return;
+    if (!interaction.guildId) return;
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'gamechannels') {
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: '❌ خاصك Administrator باش تستعمل هاد الأمر.', ephemeral: true });
+      const sub = interaction.options.getSubcommand();
+      if (sub === 'set') {
+        const ids = [];
+        for (let i = 1; i <= 10; i++) {
+          const channel = interaction.options.getChannel(`channel${i}`);
+          if (channel) ids.push(channel.id);
+        }
+        const saved = channelConfig.set(interaction.guildId, ids);
+        return interaction.reply({ content: `✅ تحددات **${saved.length}** قنوات للألعاب.\n\n${saved.map(id => `• <#${id}>`).join('\n')}\n\n🎮 دابا أوامر وألعاب GamingHub غادي تخدم غير فهاد القنوات.`, ephemeral: true });
+      }
+      if (sub === 'list') {
+        const ids = channelConfig.get(interaction.guildId);
+        return interaction.reply({ content: ids.length ? `📋 القنوات المسموح فيها GamingHub:\n${ids.map(id => `• <#${id}>`).join('\n')}` : '🌐 ماكاين حتى تحديد. GamingHub خدام فـ **جميع القنوات**.', ephemeral: true });
+      }
+      channelConfig.clear(interaction.guildId);
+      return interaction.reply({ content: '✅ تلغا تحديد القنوات. GamingHub رجع خدام فـ جميع القنوات.', ephemeral: true });
+    }
+
+    if (!channelConfig.isAllowed(interaction.guildId, interaction.channelId)) {
+      if (interaction.isButton() && interaction.customId.startsWith('gh_')) return interaction.reply({ content: '❌ GamingHub ما مسموحش فهاد القناة.', ephemeral: true });
+      return;
+    }
+
     if (await handleBoardInteraction(interaction)) return;
     if (await handleArcadeInteraction(interaction)) return;
     if (!interaction.isChatInputCommand()) return;
