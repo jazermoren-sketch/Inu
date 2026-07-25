@@ -61,22 +61,6 @@ function addProgress(id, xp, coins, win = false) {
 }
 function embed(title, description) { return new EmbedBuilder().setTitle(title).setDescription(description).setTimestamp(); }
 
-const trivia = [
-  { q: "شنو هو الكوكب المعروف بالكوكب الأحمر؟", a: ["المريخ", "mars"] },
-  { q: "شحال من لاعب كاين ففريق كرة القدم داخل الملعب؟", a: ["11", "11 لاعب"] },
-  { q: "شنو هي عاصمة المغرب؟", a: ["الرباط", "rabat"] },
-  { q: "شنو هو أكبر محيط في العالم؟", a: ["المحيط الهادئ", "الهادئ", "pacific"] },
-  { q: "شنو هو الحيوان المعروف بملك الغابة؟", a: ["الأسد", "الاسد", "lion"] }
-];
-const words = ["discord", "gaming", "football", "minecraft", "champion", " المغرب", "بطولة", "سيرفر"];
-const emojiQuestions = [
-  { e: "⚽🏆🇪🇺", a: "دوري أبطال أوروبا" },
-  { e: "🦁👑", a: "الأسد الملك" },
-  { e: "🕷️👨", a: "سبايدرمان" },
-  { e: "🚢🧊", a: "تايتانيك" },
-  { e: "🧙‍♂️💍", a: "سيد الخواتم" }
-];
-
 const commands = [
   new SlashCommandBuilder().setName("games").setDescription("عرض جميع الألعاب"),
   new SlashCommandBuilder().setName("profile").setDescription("عرض بروفايلك"),
@@ -144,7 +128,8 @@ function visualSoloRows() {
     new ButtonBuilder().setCustomId("v15_solo_quiz").setLabel("🧠 Trivia").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("v15_solo_number").setLabel("🔢 Number").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("v15_solo_word").setLabel("🔤 Word").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("v15_solo_reaction").setLabel("⚡ Reaction").setStyle(ButtonStyle.Success)
+    new ButtonBuilder().setCustomId("v15_solo_reaction").setLabel("⚡ Reaction").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("v15_back_main").setLabel("🔙 رجوع").setStyle(ButtonStyle.Secondary)
   );
 }
 function visualLobbyEmbed(l) {
@@ -155,7 +140,8 @@ function visualLobbyRows(id, started=false) {
     new ButtonBuilder().setCustomId(`v15_join_${id}`).setLabel("🎮 دخول إلى اللعبة").setStyle(ButtonStyle.Success).setDisabled(started),
     new ButtonBuilder().setCustomId(`v15_leave_${id}`).setLabel("🚪 خرج من اللعبة").setStyle(ButtonStyle.Danger).setDisabled(started),
     new ButtonBuilder().setCustomId(`v15_start_${id}`).setLabel("▶️ بدء اللعبة").setStyle(ButtonStyle.Primary).setDisabled(started),
-    new ButtonBuilder().setCustomId(`v15_cancel_${id}`).setLabel("❌ إلغاء").setStyle(ButtonStyle.Secondary).setDisabled(started)
+    new ButtonBuilder().setCustomId(`v15_cancel_${id}`).setLabel("❌ إلغاء").setStyle(ButtonStyle.Secondary).setDisabled(started),
+    new ButtonBuilder().setCustomId("v15_back_main").setLabel("🔙 رجوع").setStyle(ButtonStyle.Secondary).setDisabled(started)
   );
 }
 function mafiaRoleCounts(n) { if (n >= 6) return { mafia: 2, doctor: 1, detective: 1 }; return { mafia: 1, doctor: 1, detective: 0 }; }
@@ -208,9 +194,13 @@ async function startVisualMafia(lobby, channel) {
   await channel.send({embeds:[mafiaPublic(game,"🌙 NIGHT 1","كل لاعب يضغط على **🔐 لوحة دوري** باش يشوف دوره ويقوم بالAction ديالو.")],components:[mafiaRolePanelButton(game.id)]});
 }
 
+function mainHubEmbed() {
+  return embed("🎮 Gaming Hub", "اختار شنو بغيتي تشوف:\n\n👥 **ألعاب السيرفر** — ألعاب جماعية مع Lobby.\n🧍 **ألعاب فردية** — ألعاب كتبدأ مباشرة.");
+}
+
 client.on("messageCreate", async message => {
   if(message.author.bot || message.content.trim()!=="!العاب") return;
-  await message.reply({embeds:[visualCenterEmbed()],components:[visualCenterRows()]});
+  await message.reply({embeds:[mainHubEmbed()],components:[visualCenterRows()]});
 });
 
 client.on("interactionCreate", async interaction => {
@@ -223,6 +213,10 @@ client.on("interactionCreate", async interaction => {
 
     if (id === "v15_solo_games") {
       return interaction.update({ embeds: [embed("🧍 ألعاب فردية", "اختار لعبة فردية. اللعبة كتبدأ مباشرة بلا Lobby.")], components: [visualSoloRows()] });
+    }
+
+    if (id === "v15_back_main") {
+      return interaction.update({ embeds: [mainHubEmbed()], components: [visualCenterRows()] });
     }
 
     if (id === "v15_game_mafia") {
