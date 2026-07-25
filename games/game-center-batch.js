@@ -1,9 +1,9 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = require('./board-games');
 const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
+const { startArcadeGame, handleArcadeInteraction, arcadeEmbed, arcadeComponents } = require('./arcade-games');
 
-// GAMINGHUB_BATCH_V1
-// Centralized lobby registry for the next game batch.
+// GAMINGHUB_BATCH_V2
 const lobbies = new Map();
 const games = new Map();
 
@@ -60,11 +60,10 @@ function setupGameCenterBatch(client) {
 
   client.on('interactionCreate', async interaction => {
     if (await handleBoardInteraction(interaction)) return;
+    if (await handleArcadeInteraction(interaction)) return;
     if (!interaction.isChatInputCommand()) return;
     const name = interaction.commandName;
-    if (name === 'games' || name === 'العاب' || name === 'ألعاب') {
-      return interaction.reply({ embeds: [listEmbed()], ephemeral: true });
-    }
+    if (name === 'games' || name === 'العاب' || name === 'ألعاب') return interaction.reply({ embeds: [listEmbed()], ephemeral: true });
     if (name !== 'game') return;
     const gameId = interaction.options.getString('name', true).toLowerCase();
     const game = GAME_DEFINITIONS[gameId];
@@ -108,12 +107,14 @@ function setupGameCenterBatch(client) {
         const boardGame = startBoardGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
         return interaction.update({ content: '', embeds: [boardEmbed(boardGame, '🎮 اللعبة بدات!')], components: boardComponents(boardGame) });
       }
-
       if (lobby.game === 'math' || lobby.game === 'hangman' || lobby.game === 'wordchain') {
         const textGame = startTextGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
         return interaction.update({ content: '', embeds: [textGameEmbed(textGame)], components: [] });
       }
-
+      if (lobby.game === 'higherlower' || lobby.game === 'dice' || lobby.game === 'memory' || lobby.game === 'blackjack') {
+        const arcadeGame = startArcadeGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
+        return interaction.update({ content: '', embeds: [arcadeEmbed(arcadeGame)], components: arcadeComponents(arcadeGame) });
+      }
       return interaction.update({ content: `${definition.emoji} **${definition.name} بدات!**`, embeds: [], components: [] });
     }
   });
