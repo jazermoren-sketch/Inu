@@ -15,12 +15,14 @@ const {
 
 const fs = require("fs");
 const { setupQuizBattle } = require("../games/quiz-battle"); // QUIZ_BATTLE_MODULE
+const { setupMurderMystery } = require("../games/murder-mystery"); // MURDER_MYSTERY_MODULE
 const path = require("path");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 setupQuizBattle(client); // QUIZ_BATTLE_MODULE
+setupMurderMystery(client); // MURDER_MYSTERY_MODULE
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const DB_FILE = path.join(DATA_DIR, "database.json");
