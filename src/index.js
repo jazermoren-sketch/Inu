@@ -9,30 +9,29 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle,
-  ComponentType
+  ButtonStyle
 } = require("discord.js");
 
 const fs = require("fs");
-const { setupQuizBattle } = require("../games/quiz-battle"); // QUIZ_BATTLE_MODULE
-const { setupMurderMystery } = require("../games/murder-mystery"); // MURDER_MYSTERY_MODULE
-const { setupDuelArena } = require("../games/duel-arena"); // DUEL_ARENA_MODULE
-const { setupWordBattle } = require("../games/word-battle"); // WORD_BATTLE_MODULE
-const { setupGameCenterBatch } = require("../games/game-center-batch"); // GAMINGHUB_BATCH_V1
+const { setupQuizBattle } = require("../games/quiz-battle");
+const { setupMurderMystery } = require("../games/murder-mystery");
+const { setupDuelArena } = require("../games/duel-arena");
+const { setupWordBattle } = require("../games/word-battle");
+const { setupGameCenterBatch } = require("../games/game-center-batch");
 const path = require("path");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
-setupQuizBattle(client); // QUIZ_BATTLE_MODULE
-setupMurderMystery(client); // MURDER_MYSTERY_MODULE
-setupDuelArena(client); // DUEL_ARENA_MODULE
-setupWordBattle(client); // WORD_BATTLE_MODULE
-setupGameCenterBatch(client); // GAMINGHUB_BATCH_V1
+
+setupQuizBattle(client);
+setupMurderMystery(client);
+setupDuelArena(client);
+setupWordBattle(client);
+setupGameCenterBatch(client);
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const DB_FILE = path.join(DATA_DIR, "database.json");
-
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, JSON.stringify({ users: {}, challenges: {} }, null, 2));
 
@@ -40,48 +39,27 @@ function loadDB() {
   try { return JSON.parse(fs.readFileSync(DB_FILE, "utf8")); }
   catch { return { users: {}, challenges: {} }; }
 }
-
-function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
-
+function saveDB(db) { fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2)); }
 function getUser(id) {
   const db = loadDB();
   if (!db.users[id]) {
-    db.users[id] = {
-      xp: 0, level: 1, coins: 0, wins: 0, games: 0,
-      achievements: [], lastDaily: null
-    };
+    db.users[id] = { xp: 0, level: 1, coins: 0, wins: 0, games: 0, achievements: [], lastDaily: null };
     saveDB(db);
   }
   return db.users[id];
 }
-
 function addProgress(id, xp, coins, win = false) {
   const db = loadDB();
   if (!db.users[id]) db.users[id] = { xp: 0, level: 1, coins: 0, wins: 0, games: 0, achievements: [], lastDaily: null };
   const u = db.users[id];
-  u.xp += xp;
-  u.coins += coins;
-  u.games += 1;
+  u.xp += xp; u.coins += coins; u.games += 1;
   if (win) u.wins += 1;
-
   const oldLevel = u.level;
   u.level = Math.floor(u.xp / 100) + 1;
   saveDB(db);
   return { user: u, levelUp: u.level > oldLevel };
 }
-
-function random(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function embed(title, description) {
-  return new EmbedBuilder()
-    .setTitle(title)
-    .setDescription(description)
-    .setTimestamp();
-}
+function embed(title, description) { return new EmbedBuilder().setTitle(title).setDescription(description).setTimestamp(); }
 
 const trivia = [
   { q: "شنو هو الكوكب المعروف بالكوكب الأحمر؟", a: ["المريخ", "mars"] },
@@ -90,7 +68,6 @@ const trivia = [
   { q: "شنو هو أكبر محيط في العالم؟", a: ["المحيط الهادئ", "الهادئ", "pacific"] },
   { q: "شنو هو الحيوان المعروف بملك الغابة؟", a: ["الأسد", "الاسد", "lion"] }
 ];
-
 const words = ["discord", "gaming", "football", "minecraft", "champion", " المغرب", "بطولة", "سيرفر"];
 const emojiQuestions = [
   { e: "⚽🏆🇪🇺", a: "دوري أبطال أوروبا" },
@@ -127,31 +104,19 @@ const commands = [
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   try {
-    if (process.env.GUILD_ID) {
-      await rest.put(
-        Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
-        { body: commands }
-      );
-      console.log("✅ Guild slash commands registered");
-    } else {
-      await rest.put(
-        Routes.applicationCommands(client.user.id),
-        { body: commands }
-      );
-      console.log("✅ Global slash commands registered");
-    }
-  } catch (err) {
-    console.error("Command registration error:", err);
-  }
+    const route = process.env.GUILD_ID
+      ? Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID)
+      : Routes.applicationCommands(client.user.id);
+    await rest.put(route, { body: commands });
+    console.log(process.env.GUILD_ID ? "✅ Guild slash commands registered" : "✅ Global slash commands registered");
+  } catch (err) { console.error("Command registration error:", err); }
 });
 
 // ==================== VISUAL GAME CENTER / MAFIA V1.5 ====================
 const visualLobbies = new Map();
 const visualMafiaGames = new Map();
-
 const mafiaGameInfo = {
   mafia: { name: "🕵️ MAFIA", max: 15, desc: "لعبة اجتماعية: المافيا تختبئ، والمواطنون يحاولون اكتشافها." },
   duel: { name: "⚔️ PVP DUEL", max: 2, desc: "مواجهة مباشرة بين لاعبين." },
@@ -159,9 +124,7 @@ const mafiaGameInfo = {
   connect4: { name: "🔴🟡 CONNECT 4", max: 2, desc: "وصل أربعة رموز قبل الخصم." }
 };
 
-function visualCenterEmbed() {
-  return embed("🎮 Gaming Hub", "اختار شنو بغيتي تشوف:\n\n👥 **ألعاب السيرفر** — ألعاب جماعية مع Lobby.\n🧍 **ألعاب فردية** — ألعاب كتبدأ مباشرة.");
-}
+function visualCenterEmbed() { return embed("🎮 Gaming Hub", "اختار شنو بغيتي تشوف:\n\n👥 **ألعاب السيرفر** — ألعاب جماعية مع Lobby.\n🧍 **ألعاب فردية** — ألعاب كتبدأ مباشرة."); }
 function visualCenterRows() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("v15_server_games").setLabel("👥 ألعاب السيرفر").setStyle(ButtonStyle.Primary),
@@ -185,12 +148,7 @@ function visualSoloRows() {
   );
 }
 function visualLobbyEmbed(l) {
-  return embed(`${l.info.name} — Lobby`,
-    `${l.info.desc}\n\n` +
-    `👥 **المشاركون: ${l.players.length}/${l.info.max}**\n` +
-    l.players.map((id,i)=>`${i+1}. <@${id}>`).join("\n") +
-    `\n\n👑 **Host:** <@${l.host}>\n⏳ **الحالة:** ${l.started ? "اللعبة بدأت" : "في انتظار اللاعبين"}`
-  );
+  return embed(`${l.info.name} — Lobby`, `${l.info.desc}\n\n👥 **المشاركون: ${l.players.length}/${l.info.max}**\n${l.players.map((id,i)=>`${i+1}. <@${id}>`).join("\n")}\n\n👑 **Host:** <@${l.host}>\n⏳ **الحالة:** ${l.started ? "اللعبة بدأت" : "في انتظار اللاعبين"}`);
 }
 function visualLobbyRows(id, started=false) {
   return new ActionRowBuilder().addComponents(
@@ -200,11 +158,7 @@ function visualLobbyRows(id, started=false) {
     new ButtonBuilder().setCustomId(`v15_cancel_${id}`).setLabel("❌ إلغاء").setStyle(ButtonStyle.Secondary).setDisabled(started)
   );
 }
-function mafiaRoleCounts(n) {
-  if (n >= 10) return { mafia: 2, doctor: 1, detective: 1 };
-  if (n >= 6) return { mafia: 2, doctor: 1, detective: 1 };
-  return { mafia: 1, doctor: 1, detective: 0 };
-}
+function mafiaRoleCounts(n) { if (n >= 6) return { mafia: 2, doctor: 1, detective: 1 }; return { mafia: 1, doctor: 1, detective: 0 }; }
 function shuffle(a) { return [...a].sort(()=>Math.random()-0.5); }
 function assignMafiaRoles(ids) {
   const c=mafiaRoleCounts(ids.length);
@@ -212,16 +166,46 @@ function assignMafiaRoles(ids) {
   while(roles.length<ids.length) roles.push("citizen");
   return shuffle(roles);
 }
-function mafiaPublic(game, phase, text="") {
-  return embed(`🕵️ MAFIA — ${phase}`, `${text}\n\n👥 **الأحياء:**\n${game.players.filter(p=>p.alive).map(p=>`<@${p.id}>`).join("\n")}`);
-}
-function mafiaFinalEmbed(game, winner, teamPoints) {
+function mafiaPublic(game, phase, text="") { return embed(`🕵️ MAFIA — ${phase}`, `${text}\n\n👥 **الأحياء:**\n${game.players.filter(p=>p.alive).map(p=>`<@${p.id}>`).join("\n")}`); }
+function mafiaFinalEmbed(game, winner) {
   const mafiaWon=winner==="mafia";
   const win=game.players.filter(p=>mafiaWon?p.role==="mafia":p.role!=="mafia");
   const lose=game.players.filter(p=>mafiaWon?p.role!=="mafia":p.role==="mafia");
-  return new EmbedBuilder()
-    .setTitle(`🏆 ${mafiaWon?"🕵️ MAFIA":"👥 CITIZENS"} — WINNERS 👑`)
-    .setDescription(`**${mafiaWon?"الفريق الأول":"الفريق الثاني"} هو الفائز! 👑**`);
+  return new EmbedBuilder().setTitle(`🏆 ${mafiaWon?"🕵️ MAFIA":"👥 CITIZENS"} — WINNERS 👑`).setDescription(`**${mafiaWon?"الفريق الأول":"الفريق الثاني"} هو الفائز! 👑**\n\n🥇 **الفريق الفائز:**\n${win.map(p=>`<@${p.id}>`).join(" ")}\n\n🥈 **الفريق الخاسر:**\n${lose.map(p=>`<@${p.id}>`).join(" ")}`).addFields({name:"🎭 الأدوار",value:game.players.map(p=>`<@${p.id}> — ${p.role.toUpperCase()}`).join("\n")}).setFooter({text:"Mafia • Game Over"});
+}
+function mafiaPointsButton(points) { return new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`v15_points_${Date.now()}`).setLabel(`🤖 +${points} نقطة للفريق الفائز`).setStyle(ButtonStyle.Secondary).setDisabled(true)); }
+function mafiaRolePanelButton(gameId) { return new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`m17|role|${gameId}`).setLabel("🔐 لوحة دوري").setStyle(ButtonStyle.Secondary)); }
+function mafiaTargetRows(game, payload, isDoctor=false) {
+  const alive=game.players.filter(p=>p.alive&&p.id!==payload.actorId);
+  return [new ActionRowBuilder().addComponents(alive.slice(0,5).map((p,i)=>new ButtonBuilder().setCustomId(`m17|${payload.type}|${game.id}|${p.id}`).setLabel(`${i+1}. ${p.id.slice(-4)}`).setStyle(isDoctor?ButtonStyle.Success:ButtonStyle.Danger)))];
+}
+function mafiaRoleLabel(role) { return role==="mafia"?"MAFIA":role==="doctor"?"DOCTOR":role==="detective"?"DETECTIVE":"CITIZEN"; }
+function mafiaCheckWinner(game) {
+  const mafiaAlive=game.players.some(p=>p.alive&&p.role==="mafia");
+  const citizensAlive=game.players.some(p=>p.alive&&p.role!=="mafia");
+  return !mafiaAlive?"citizens":!citizensAlive?"mafia":null;
+}
+async function resolveMafiaNight(game) {
+  if(!game||game.phase!=="NIGHT") return;
+  const mafiaDone=game.players.some(p=>p.role==="mafia")?!!game.night.mafiaTarget:true;
+  const doctorDone=!!game.night.doctorTarget;
+  const detectiveDone=game.players.some(p=>p.role==="detective")?!!game.night.detectiveTarget:true;
+  if(!mafiaDone||!doctorDone||!detectiveDone) return;
+  if(game.night.mafiaTarget&&game.night.mafiaTarget!==game.night.doctorTarget){const t=game.players.find(p=>p.id===game.night.mafiaTarget);if(t)t.alive=false;}
+  game.night={mafiaTarget:null,doctorTarget:null,detectiveTarget:null};
+  const winner=mafiaCheckWinner(game);
+  const channel=await client.channels.fetch(game.channelId).catch(()=>null);
+  if(!channel)return;
+  if(winner){await channel.send({embeds:[mafiaFinalEmbed(game,winner)],components:[mafiaPointsButton(winner==="mafia"?60:50)]});visualMafiaGames.delete(game.id);return;}
+  game.phase="DAY";
+  await channel.send({embeds:[mafiaPublic(game,`DAY ${game.round}`,"🌤️ النهار بدا. ناقشوا وصوتوا على المشتبه به.")]});
+}
+async function startVisualMafia(lobby, channel) {
+  if(lobby.players.length<5)return;
+  const roles=assignMafiaRoles(lobby.players);
+  const game={id:lobby.id,channelId:channel.id,round:1,phase:"NIGHT",votes:new Map(),night:{mafiaTarget:null,doctorTarget:null,detectiveTarget:null},players:lobby.players.map((id,i)=>({id,role:roles[i],alive:true}))};
+  visualMafiaGames.set(game.id,game);
+  await channel.send({embeds:[mafiaPublic(game,"🌙 NIGHT 1","كل لاعب يضغط على **🔐 لوحة دوري** باش يشوف دوره ويقوم بالAction ديالو.")],components:[mafiaRolePanelButton(game.id)]});
 }
 
 client.on("messageCreate", async message => {
@@ -230,72 +214,37 @@ client.on("messageCreate", async message => {
 });
 
 client.on("interactionCreate", async interaction => {
-  // M18_MAFIA_ROLE_PANEL_HANDLER
-  if (interaction.isButton() && interaction.customId.startsWith("m17|")) {
-    const parts = interaction.customId.split("|");
-    const action = parts[1];
-    const gameId = parts[2];
-    const game = visualMafiaGames.get(gameId);
-
-    if (!game) return interaction.reply({ content: "❌ هاد لعبة Mafia سالات.", ephemeral: true });
-
-    const player = game.players.find(p => p.id === interaction.user.id);
-    if (!player) return interaction.reply({ content: "❌ ماشي لاعب فهاد اللعبة.", ephemeral: true });
-    if (!player.alive) return interaction.reply({ content: "💀 ما تقدرش تلعب وأنت ميت.", ephemeral: true });
-
-    if (action === "role") {
-      const roleText = mafiaRoleLabel(player.role);
-      let description = `🎭 **الدور ديالك: ${roleText}**\n\n`;
-      if (player.role === "mafia") description += "🕵️ اختار لاعب تستهدفه فالليل.";
-      else if (player.role === "doctor") description += "💉 اختار لاعب تحميه فالليل.";
-      else if (player.role === "detective") description += "🔎 اختار لاعب باش تعرف واش هو Mafia.";
-      else description += "👤 أنت مواطن. راقب، ناقش، وصوّت فالنهار.";
-
-      const rows = [];
-      if (game.phase === "NIGHT" && ["mafia", "doctor", "detective"].includes(player.role)) {
-        rows.push(...mafiaTargetRows(game, { type: player.role, actorId: player.id }, player.role === "doctor"));
-      }
-      return interaction.reply({ content: description, components: rows, ephemeral: true });
+  if(interaction.isButton()&&interaction.customId.startsWith("m17|")){
+    const parts=interaction.customId.split("|"), action=parts[1], gameId=parts[2], game=visualMafiaGames.get(gameId);
+    if(!game)return interaction.reply({content:"❌ هاد لعبة Mafia سالات.",ephemeral:true});
+    const player=game.players.find(p=>p.id===interaction.user.id);
+    if(!player)return interaction.reply({content:"❌ ماشي لاعب فهاد اللعبة.",ephemeral:true});
+    if(!player.alive)return interaction.reply({content:"💀 ما تقدرش تلعب وأنت ميت.",ephemeral:true});
+    if(action==="role"){
+      let description=`🎭 **الدور ديالك: ${mafiaRoleLabel(player.role)}**\n\n`;
+      if(player.role==="mafia")description+="🕵️ اختار لاعب تستهدفه فالليل.";else if(player.role==="doctor")description+="💉 اختار لاعب تحميه فالليل.";else if(player.role==="detective")description+="🔎 اختار لاعب باش تعرف واش هو Mafia.";else description+="👤 أنت مواطن. راقب، ناقش، وصوّت فالنهار.";
+      const rows=[];
+      if(game.phase==="NIGHT"&&["mafia","doctor","detective"].includes(player.role))rows.push(...mafiaTargetRows(game,{type:player.role,actorId:player.id},player.role==="doctor"));
+      return interaction.reply({content:description,components:rows,ephemeral:true});
     }
-
-    if (game.phase !== "NIGHT") return interaction.reply({ content: "☀️ دابا النهار. تسنى التصويت.", ephemeral: true });
-
-    const targetId = parts[3];
-    const target = game.players.find(p => p.id === targetId && p.alive);
-    if (!target) return interaction.reply({ content: "❌ الهدف غير صالح.", ephemeral: true });
-
-    if (action === "mafia") {
-      if (player.role !== "mafia") return interaction.reply({ content: "❌ ما عندكش هاد الصلاحية.", ephemeral: true });
-      game.night.mafiaTarget = target.id;
-    } else if (action === "doctor") {
-      if (player.role !== "doctor") return interaction.reply({ content: "❌ ما عندكش هاد الصلاحية.", ephemeral: true });
-      game.night.doctorTarget = target.id;
-    } else if (action === "detective") {
-      if (player.role !== "detective") return interaction.reply({ content: "❌ ما عندكش هاد الصلاحية.", ephemeral: true });
-      game.night.detectiveTarget = target.id;
-    } else {
-      return interaction.reply({ content: "❌ Action غير معروف.", ephemeral: true });
-    }
-
-    await interaction.reply({ content: `✅ تسجل الاختيار ديالك ضد <@${target.id}>.`, ephemeral: true });
+    if(game.phase!=="NIGHT")return interaction.reply({content:"☀️ دابا النهار. تسنى التصويت.",ephemeral:true});
+    const target=game.players.find(p=>p.id===parts[3]&&p.alive);
+    if(!target)return interaction.reply({content:"❌ الهدف غير صالح.",ephemeral:true});
+    if(action==="mafia"){if(player.role!=="mafia")return interaction.reply({content:"❌ ما عندكش هاد الصلاحية.",ephemeral:true});game.night.mafiaTarget=target.id;}
+    else if(action==="doctor"){if(player.role!=="doctor")return interaction.reply({content:"❌ ما عندكش هاد الصلاحية.",ephemeral:true});game.night.doctorTarget=target.id;}
+    else if(action==="detective"){if(player.role!=="detective")return interaction.reply({content:"❌ ما عندكش هاد الصلاحية.",ephemeral:true});game.night.detectiveTarget=target.id;}
+    else return interaction.reply({content:"❌ Action غير معروف.",ephemeral:true});
+    await interaction.reply({content:`✅ تسجل الاختيار ديالك ضد <@${target.id}>.`,ephemeral:true});
     await resolveMafiaNight(game);
   }
-
-  if (!interaction.isChatInputCommand()) return;
-  const command = interaction.commandName;
-
-  if (command === "games") {
-    return interaction.reply({ embeds: [embed("🎮 Gaming Hub", "استعمل `!العاب` أو استعمل الألعاب الجديدة.")], ephemeral: true });
-  }
-
-  if (command === "game") {
-    const gameId = interaction.options.getString("name", true).toLowerCase();
-    if (!GAME_DEFINITIONS[gameId]) return interaction.reply({ content: "❌ هاد اللعبة مازال ما مربوطةش من Game Center.", ephemeral: true });
-    return interaction.reply({ content: `ℹ️ ${GAME_DEFINITIONS[gameId].name} جاهزة فـ Game Center.` , ephemeral: true });
+  if(!interaction.isChatInputCommand())return;
+  const command=interaction.commandName;
+  if(command==="games")return interaction.reply({embeds:[embed("🎮 Gaming Hub","استعمل `!العاب` أو استعمل الألعاب الجديدة.")],ephemeral:true});
+  if(command==="game"){
+    const gameId=interaction.options.getString("name",true).toLowerCase();
+    if(!GAME_DEFINITIONS[gameId])return interaction.reply({content:"❌ هاد اللعبة مازال ما مربوطةش من Game Center.",ephemeral:true});
+    return interaction.reply({content:`ℹ️ ${GAME_DEFINITIONS[gameId].name} جاهزة فـ Game Center.`,ephemeral:true});
   }
 });
-
-
-// ==================== AI / FUN / ORIGINAL GAMES ====================
 
 client.login(process.env.DISCORD_TOKEN);
