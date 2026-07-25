@@ -221,93 +221,11 @@ function mafiaFinalEmbed(game, winner, teamPoints) {
   const lose=game.players.filter(p=>mafiaWon?p.role!=="mafia":p.role==="mafia");
   return new EmbedBuilder()
     .setTitle(`🏆 ${mafiaWon?"🕵️ MAFIA":"👥 CITIZENS"} — WINNERS 👑`)
-    .setDescription(`**${mafiaWon?"الفريق الأول":"الفريق الثاني"} هو الفائز! 👑**\n\n🥇 **الفريق الفائز:**\n${win.map(p=>`<@${p.id}>`).join(" ")}\n\n🥈 **الفريق الخاسر:**\n${lose.map(p=>`<@${p.id}>`).join(" ")}`)
-    .addFields({name:"🎭 الأدوار",value:game.players.map(p=>`<@${p.id}> — ${p.role.toUpperCase()}`).join("\n")})
-    .setFooter({text:"Mafia • Game Over"});
+    .setDescription(`**${mafiaWon?"الفريق الأول":"الفريق الثاني"} هو الفائز! 👑**`);
 }
-function mafiaPointsButton(points) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`v15_points_${Date.now()}`).setLabel(`🤖 +${points} نقطة للفريق الفائز`).setStyle(ButtonStyle.Secondary).setDisabled(true)
-  );
-}
-function mafiaRolePanelButton(gameId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`m17|role|${gameId}`).setLabel("🔐 لوحة دوري").setStyle(ButtonStyle.Secondary)
-  );
-}
-function mafiaTargetRows(game, payload, isDoctor=false) {
-  const alive = game.players.filter(p=>p.alive && p.id !== payload.actorId);
-  return [new ActionRowBuilder().addComponents(
-    alive.slice(0,5).map((p, i) => new ButtonBuilder()
-      .setCustomId(`m17|${payload.type}|${game.id}|${p.id}`)
-      .setLabel(`${i+1}. ${p.id.slice(-4)}`)
-      .setStyle(isDoctor ? ButtonStyle.Success : ButtonStyle.Danger)
-    )
-  )];
-}
-function mafiaRoleLabel(role) {
-  if (role === "mafia") return "MAFIA";
-  if (role === "doctor") return "DOCTOR";
-  if (role === "detective") return "DETECTIVE";
-  return "CITIZEN";
-}
-function mafiaCheckWinner(game) {
-  const mafiaAlive = game.players.some(p=>p.alive && p.role==="mafia");
-  const citizensAlive = game.players.some(p=>p.alive && p.role!=="mafia");
-  return !mafiaAlive ? "citizens" : !citizensAlive ? "mafia" : null;
-}
-function cleanupVisualMafia(game) { if (game && game.id) visualMafiaGames.delete(game.id); }
-function mafiaActionRows(game, player) { if (!player || !player.alive) return []; return []; }
-function mafiaTargetRowsStub() { return []; }
-async function resolveMafiaNight(game) {
-  if (!game || game.phase !== "NIGHT") return;
-  const mafiaDone = game.players.some(p=>p.role==="mafia") ? !!game.night.mafiaTarget : true;
-  const doctorDone = !!game.night.doctorTarget;
-  const detectiveDone = game.players.some(p=>p.role==="detective") ? !!game.night.detectiveTarget : true;
-  if (!mafiaDone || !doctorDone || !detectiveDone) return;
-  const protectedId = game.night.doctorTarget;
-  const killId = game.night.mafiaTarget;
-  if (killId && killId !== protectedId) {
-    const t = game.players.find(p=>p.id===killId);
-    if (t) t.alive = false;
-  }
-  game.night = { mafiaTarget:null, doctorTarget:null, detectiveTarget:null };
-  const winner = mafiaCheckWinner(game);
-  const channel = await client.channels.fetch(game.channelId).catch(()=>null);
-  if (!channel) return;
-  if (winner) {
-    await channel.send({ embeds: [mafiaFinalEmbed(game, winner, 0)], components: [mafiaPointsButton(winner === "mafia" ? 60 : 50)] });
-    visualMafiaGames.delete(game.id);
-    return;
-  }
-  game.phase = "DAY";
-  await channel.send({ embeds: [mafiaPublic(game, `DAY ${game.round}`, "🌤️ النهار بدا. ناقشوا وصوتوا على المشتبه به.")], components: [] });
-}
-async function startVisualMafia(lobby, channel) {
-  if (lobby.players.length < 5) return;
-  const roles = assignMafiaRoles(lobby.players);
-  const game = {
-    id:lobby.id, channelId:channel.id, round:1, phase:"NIGHT",
-    votes:new Map(), night:{mafiaTarget:null, doctorTarget:null, detectiveTarget:null},
-    players:lobby.players.map((id,i)=>({id,role:roles[i],alive:true}))
-  };
-  visualMafiaGames.set(game.id,game);
 
-  const roleFiles = {
-    mafia: path.join(__dirname, "..", "assets", "mafia", "mafia.png"),
-    doctor: path.join(__dirname, "..", "assets", "mafia", "doctor.png"),
-    detective: path.join(__dirname, "..", "assets", "mafia", "doctor.png"),
-    citizen: path.join(__dirname, "..", "assets", "mafia", "citizen.png")
-  };
-
-  const roleMessage = await channel.send({
-    embeds: [mafiaPublic(game,"🌙 NIGHT 1","كل لاعب يضغط على **🔐 لوحة دوري** باش يشوف دوره ويقوم بالAction ديالو.")],
-    components: [mafiaRolePanelButton(game.id)]
-  });
-  void roleMessage;
-}
 client.on("messageCreate", async message => {
-  if(message.author.bot || message.content.trim()!=="-العاب") return;
+  if(message.author.bot || message.content.trim()!=="!العاب") return;
   await message.reply({embeds:[visualCenterEmbed()],components:[visualCenterRows()]});
 });
 
@@ -367,7 +285,7 @@ client.on("interactionCreate", async interaction => {
   const command = interaction.commandName;
 
   if (command === "games") {
-    return interaction.reply({ embeds: [embed("🎮 Gaming Hub", "اكتب `-العاب` أو استعمل الألعاب الجديدة.")], ephemeral: true });
+    return interaction.reply({ embeds: [embed("🎮 Gaming Hub", "استعمل `!العاب` أو استعمل الألعاب الجديدة.")], ephemeral: true });
   }
 
   if (command === "game") {
@@ -376,7 +294,6 @@ client.on("interactionCreate", async interaction => {
     return interaction.reply({ content: `ℹ️ ${GAME_DEFINITIONS[gameId].name} جاهزة فـ Game Center.` , ephemeral: true });
   }
 });
-
 
 
 // ==================== AI / FUN / ORIGINAL GAMES ====================
