@@ -3,7 +3,8 @@ const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = 
 const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
 const { startArcadeGame, handleArcadeInteraction, arcadeEmbed, arcadeComponents } = require('./arcade-games');
 const { handleSoloMessage } = require('./solo-games');
-const { startExtraGame, handleExtraMessage, finishExtraGame, extraEmbed } = require('./extra-games');
+const extraGames = require('./extra-games');
+const { startExtraGame, handleExtraMessage, finishExtraGame, extraEmbed } = extraGames;
 const channelConfig = require('./channel-config');
 
 // GAMINGHUB_BATCH_V6
@@ -71,6 +72,37 @@ function channelConfigCommand() {
   };
 }
 
+function mainHubEmbed() {
+  return new EmbedBuilder().setTitle('🎮 Gaming Hub').setDescription('اختار شنو بغيتي تشوف:\n\n👥 **ألعاب السيرفر** — ألعاب جماعية مع Lobby.\n🧍 **ألعاب فردية** — ألعاب كتبدأ مباشرة.');
+}
+
+function mainHubRows() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('v15_server_games').setLabel('👥 ألعاب السيرفر').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('v15_solo_games').setLabel('🧍 ألعاب فردية').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function soloRows() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('v15_solo_quiz').setLabel('🧠 Trivia').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('v15_solo_number').setLabel('🔢 Number').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('v15_solo_word').setLabel('🔤 Word').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('v15_solo_reaction').setLabel('⚡ Reaction').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('v15_back_main').setLabel('🔙 رجوع').setStyle(ButtonStyle.Secondary)
+  );
+}
+
+function serverRows() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('v15_game_mafia').setLabel('🕵️ Mafia').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('v15_game_duel').setLabel('⚔️ Duel').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('v15_game_ttt').setLabel('❌⭕ Tic Tac Toe').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('v15_game_connect4').setLabel('🔴🟡 Connect 4').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('v15_back_main').setLabel('🔙 رجوع').setStyle(ButtonStyle.Secondary)
+  );
+}
+
 function setupGameCenterBatch(client) {
   client.once('ready', async () => {
     try {
@@ -118,6 +150,55 @@ function setupGameCenterBatch(client) {
 
     if (await handleBoardInteraction(interaction)) return;
     if (await handleArcadeInteraction(interaction)) return;
+
+    if (interaction.isButton()) {
+      const id = interaction.customId;
+      if (id === 'v15_server_games') return interaction.update({ embeds: [new EmbedBuilder().setTitle('👥 ألعاب السيرفر').setDescription('اختار اللعبة الجماعية اللي بغيتي تبدأها.')], components: [serverRows()] });
+      if (id === 'v15_solo_games') return interaction.update({ embeds: [new EmbedBuilder().setTitle('🧍 ألعاب فردية').setDescription('اختار لعبة فردية. اللعبة كتبدأ مباشرة بلا Lobby.')], components: [soloRows()] });
+      if (id === 'v15_back_main') return interaction.update({ embeds: [mainHubEmbed()], components: [mainHubRows()] });
+      if (id === 'v15_solo_quiz') return interaction.reply({ content: '🧠 Trivia كتخدم من Game Center /game.', ephemeral: true });
+      if (id === 'v15_solo_number') return interaction.reply({ content: '🔢 Number كتخدم من Game Center /game.', ephemeral: true });
+      if (id === 'v15_solo_word') return interaction.reply({ content: '🔤 Word كتخدم من Game Center /game.', ephemeral: true });
+      if (id === 'v15_solo_reaction') return interaction.reply({ content: '⚡ Reaction كتخدم بالاختصار !reaction أو من Game Center.', ephemeral: true });
+      if (id === 'v15_game_mafia') {
+        const lobbyId = `mafia-${interaction.guildId}-${Date.now()}`;
+        const lobby = { id: lobbyId, info: GAME_DEFINITIONS.impostor ? { name: '🕵️ MAFIA', max: 15, desc: 'لعبة اجتماعية: المافيا تختبئ، والمواطنون يحاولون اكتشافها.' } : null, host: interaction.user.id, players: [interaction.user.id], started: false };
+        visualLobbies.set(lobbyId, lobby);
+        return interaction.update({ embeds: [new EmbedBuilder().setTitle('🕵️ MAFIA — Lobby').setDescription(`لعبة المافيا بدات كـLobby بلا دابا.\n\n👥 **المشاركون: 1/15**\n1. <@${interaction.user.id}>\n\n👑 **Host:** <@${interaction.user.id}>\n⏳ **الحالة:** في انتظار اللاعبين`)], components: [lobbyButtons(lobbyId)] });
+      }
+      if (id === 'v15_game_duel') return interaction.reply({ content: '⚔️ Duel غادي نكملوه فمرحلة لاحقة.', ephemeral: true });
+      if (id === 'v15_game_ttt') return interaction.reply({ content: '❌⭕ Tic Tac Toe راه خدام من Game Center /game.', ephemeral: true });
+      if (id === 'v15_game_connect4') return interaction.reply({ content: '🔴🟡 Connect 4 راه خدام من Game Center /game.', ephemeral: true });
+      if (id.startsWith('v15_join_') || id.startsWith('v15_leave_') || id.startsWith('v15_start_') || id.startsWith('v15_cancel_')) {
+        const lobbyId = id.split('_').slice(2).join('_');
+        const lobby = visualLobbies.get(lobbyId);
+        if (!lobby) return interaction.reply({ content: '❌ هاد Lobby سالات.', ephemeral: true });
+        if (id.startsWith('v15_join_')) {
+          if (!lobby.players.includes(interaction.user.id)) lobby.players.push(interaction.user.id);
+          return interaction.update({ embeds: [new EmbedBuilder().setTitle('🕵️ MAFIA — Lobby').setDescription(`لعبة المافيا بدات كـLobby بلا دابا.\n\n👥 **المشاركون: ${lobby.players.length}/15**\n${lobby.players.map((pid, i) => `${i + 1}. <@${pid}>`).join('\n')}\n\n👑 **Host:** <@${lobby.host}>\n⏳ **الحالة:** في انتظار اللاعبين`)], components: [lobbyButtons(lobbyId)] });
+        }
+        if (id.startsWith('v15_leave_')) {
+          lobby.players = lobby.players.filter(pid => pid !== interaction.user.id);
+          if (!lobby.players.length) { visualLobbies.delete(lobbyId); return interaction.update({ content: '❌ تسدات الـLobby.', embeds: [], components: [] }); }
+          return interaction.update({ embeds: [new EmbedBuilder().setTitle('🕵️ MAFIA — Lobby').setDescription(`لعبة المافيا بدات كـLobby بلا دابا.\n\n👥 **المشاركون: ${lobby.players.length}/15**\n${lobby.players.map((pid, i) => `${i + 1}. <@${pid}>`).join('\n')}\n\n👑 **Host:** <@${lobby.host}>\n⏳ **الحالة:** في انتظار اللاعبين`)], components: [lobbyButtons(lobbyId)] });
+        }
+        if (id.startsWith('v15_cancel_')) {
+          if (interaction.user.id !== lobby.host) return interaction.reply({ content: '❌ غير الـHost يقدر يلغي.', ephemeral: true });
+          visualLobbies.delete(lobbyId);
+          return interaction.update({ content: '❌ تلغات اللعبة.', embeds: [], components: [] });
+        }
+        if (id.startsWith('v15_start_')) {
+          if (interaction.user.id !== lobby.host) return interaction.reply({ content: '❌ غير الـHost يقدر يبدا.', ephemeral: true });
+          if (lobby.players.length < 5) return interaction.reply({ content: '❌ Mafia خاصها على الأقل 5 لاعبين.', ephemeral: true });
+          lobby.started = true;
+          visualLobbies.delete(lobbyId);
+          await interaction.update({ content: '🎮 اللعبة بدات!', embeds: [], components: [] });
+          await startExtraGame({ id: lobbyId, type: 'trivia', channelId: interaction.channelId, players: lobby.players });
+          return;
+        }
+      }
+    }
+
     if (!interaction.isChatInputCommand()) return;
     const name = interaction.commandName;
     if (name === 'games' || name === 'العاب' || name === 'ألعاب') return interaction.reply({ embeds: [listEmbed()], ephemeral: true });
@@ -126,7 +207,7 @@ function setupGameCenterBatch(client) {
     const game = GAME_DEFINITIONS[gameId];
     if (!game) return interaction.reply({ content: '❌ اللعبة غير موجودة فـ Game Center.', ephemeral: true });
     const id = `${interaction.guildId}-${gameId}-${Date.now()}`;
-    const lobby = { id, game: gameId, host: interaction.user.id, channelId: interaction.channelId, players: [interaction.user.id] };
+    const lobby = { id, game: gameId, host: interaction.user.id, channelId: interaction.channelId, players: [interaction.user.id], startedAt: Date.now() };
     lobbies.set(id, lobby);
     return interaction.reply({ embeds: [lobbyEmbed(lobby)], components: [lobbyButtons(id)] });
   });
