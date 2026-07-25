@@ -1,4 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = require('./board-games');
 
 // GAMINGHUB_BATCH_V1
 // Centralized lobby registry for the next game batch.
@@ -53,6 +54,7 @@ function lobbyButtons(id) {
 
 function setupGameCenterBatch(client) {
   client.on('interactionCreate', async interaction => {
+    if (await handleBoardInteraction(interaction)) return;
     if (!interaction.isChatInputCommand()) return;
     const name = interaction.commandName;
     if (name === 'games' || name === 'العاب' || name === 'ألعاب') {
@@ -93,8 +95,19 @@ function setupGameCenterBatch(client) {
     if (action === 'start') {
       if (interaction.user.id !== lobby.host) return interaction.reply({ content: '❌ غير الـHost يقدر يبدا.', ephemeral: true });
       if (lobby.players.length < definition.min) return interaction.reply({ content: `❌ خاص على الأقل ${definition.min} لاعبين.`, ephemeral: true });
-      games.set(id, { id, game: lobby.game, channelId: lobby.channelId, players: [...lobby.players], startedAt: Date.now() });
+      const gameState = { id, game: lobby.game, channelId: lobby.channelId, players: [...lobby.players], startedAt: Date.now() };
+      games.set(id, gameState);
       lobbies.delete(id);
+
+      if (lobby.game === 'connect4' || lobby.game === 'tictactoe') {
+        const boardGame = startBoardGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
+        return interaction.update({
+          content: '',
+          embeds: [boardEmbed(boardGame, '🎮 اللعبة بدات!')],
+          components: boardComponents(boardGame)
+        });
+      }
+
       return interaction.update({ content: `${definition.emoji} **${definition.name} بدات!**`, embeds: [], components: [] });
     }
   });
