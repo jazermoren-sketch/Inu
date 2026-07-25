@@ -71,7 +71,7 @@ function setupWordBattle(client) {
     if (interaction.user.id !== lobby.host) return interaction.reply({ content: "❌ غير الـ Host يقدر يبدا.", ephemeral: true });
     if (lobby.players.length < 2) return interaction.reply({ content: "❌ خاص على الأقل جوج لاعبين.", ephemeral: true });
 
-    const game = { id, players: [...lobby.players], scores: {}, round: 1, current: WORDS[Math.floor(Math.random() * WORDS.length)] };
+    const game = { id, channelId: interaction.channelId, players: [...lobby.players], scores: {}, round: 1, current: WORDS[Math.floor(Math.random() * WORDS.length)] };
     game.players.forEach(x => game.scores[x] = 0);
     games.set(id, game);
     lobbies.delete(id);
