@@ -1,5 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = require('./board-games');
+const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
 
 // GAMINGHUB_BATCH_V1
 // Centralized lobby registry for the next game batch.
@@ -53,6 +54,10 @@ function lobbyButtons(id) {
 }
 
 function setupGameCenterBatch(client) {
+  client.on('messageCreate', async message => {
+    try { await handleTextMessage(message); } catch (error) { console.error('Text game error:', error); }
+  });
+
   client.on('interactionCreate', async interaction => {
     if (await handleBoardInteraction(interaction)) return;
     if (!interaction.isChatInputCommand()) return;
@@ -101,11 +106,12 @@ function setupGameCenterBatch(client) {
 
       if (lobby.game === 'connect4' || lobby.game === 'tictactoe') {
         const boardGame = startBoardGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
-        return interaction.update({
-          content: '',
-          embeds: [boardEmbed(boardGame, '🎮 اللعبة بدات!')],
-          components: boardComponents(boardGame)
-        });
+        return interaction.update({ content: '', embeds: [boardEmbed(boardGame, '🎮 اللعبة بدات!')], components: boardComponents(boardGame) });
+      }
+
+      if (lobby.game === 'math' || lobby.game === 'hangman' || lobby.game === 'wordchain') {
+        const textGame = startTextGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
+        return interaction.update({ content: '', embeds: [textGameEmbed(textGame)], components: [] });
       }
 
       return interaction.update({ content: `${definition.emoji} **${definition.name} بدات!**`, embeds: [], components: [] });
