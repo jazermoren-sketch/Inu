@@ -345,6 +345,7 @@ async function resolveMafiaVote(game) {
 }
 
 async function startVisualMafia(lobby, channel) {
+  if (lobby.players.length < 5) return;
   const roles=assignMafiaRoles(lobby.players);
   const game={
     id:lobby.id, channelId:channel.id, round:1, phase:"NIGHT",
