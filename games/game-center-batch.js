@@ -2,8 +2,9 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('
 const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = require('./board-games');
 const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
 const { startArcadeGame, handleArcadeInteraction, arcadeEmbed, arcadeComponents } = require('./arcade-games');
+const { handleSoloMessage } = require('./solo-games');
 
-// GAMINGHUB_BATCH_V2
+// GAMINGHUB_BATCH_V3
 const lobbies = new Map();
 const games = new Map();
 
@@ -36,7 +37,7 @@ const SOLO_GAMES = {
 function listEmbed() {
   const multiplayer = Object.entries(GAME_DEFINITIONS).map(([id, g]) => `${g.emoji} **${g.name}** — ${g.description}`).join('\n');
   const solo = Object.values(SOLO_GAMES).map(g => `${g.emoji} **${g.name}** — ${g.description}`).join('\n');
-  return new EmbedBuilder().setTitle('🎮 GamingHub — Game Center').setDescription(`## 🎮 ألعاب السيرفر\n${multiplayer}\n\n## 🧍 ألعاب فردية\n${solo}`).setFooter({ text: 'GamingHub Game Center' });
+  return new EmbedBuilder().setTitle('🎮 GamingHub — Game Center').setDescription(`## 🎮 ألعاب السيرفر\n${multiplayer}\n\n## 🧍 ألعاب فردية\n${solo}\n\n⚡ الألعاب الفردية كتبدأ مباشرة بالاختصار ديالها، وأول جواب صحيح فـ15 ثانية كيربح نقاط حسب السرعة.`).setFooter({ text: 'GamingHub Game Center' });
 }
 
 function lobbyEmbed(lobby) {
@@ -55,7 +56,10 @@ function lobbyButtons(id) {
 
 function setupGameCenterBatch(client) {
   client.on('messageCreate', async message => {
-    try { await handleTextMessage(message); } catch (error) { console.error('Text game error:', error); }
+    try {
+      if (await handleSoloMessage(message)) return;
+      await handleTextMessage(message);
+    } catch (error) { console.error('Game message error:', error); }
   });
 
   client.on('interactionCreate', async interaction => {
