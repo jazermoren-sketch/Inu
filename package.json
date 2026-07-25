@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "node scripts/runtime-test.js",
+    "test:syntax": "node --check src/index.js && node --check games/game-center-batch.js && node --check games/channel-config.js && node --check games/board-games.js && node --check games/text-games.js && node --check games/arcade-games.js && node --check games/solo-games.js && node --check games/extra-games.js"
   },
   "dependencies": {
     "discord.js": "^14.21.0",
