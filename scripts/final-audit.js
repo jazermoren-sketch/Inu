@@ -28,6 +28,8 @@ check('dotenv dependency exists', Boolean(packageJson.dependencies?.dotenv));
 
 const center = fs.readFileSync(path.join(root, 'games/game-center-batch.js'), 'utf8');
 const definitions = [...center.matchAll(/^\s{2}([A-Za-z0-9_]+):\s*\{/gm)].map(m => m[1]);
+const soloIds = ['daily', 'reactionSolo', 'mathSolo', 'emojiSolo', 'memorySolo'];
+const multiplayerIds = definitions.filter(id => !soloIds.includes(id));
 const routes = {
   board: ['connect4', 'tictactoe'],
   text: ['math', 'hangman', 'wordchain'],
@@ -35,7 +37,7 @@ const routes = {
   extra: ['impostor', 'reaction', 'emoji', 'trivia', 'treasure', 'speedquiz']
 };
 const routed = new Set(Object.values(routes).flat());
-const uncovered = definitions.filter(id => !routed.has(id));
+const uncovered = multiplayerIds.filter(id => !routed.has(id));
 
 check('Game definitions discovered', definitions.length > 0, `${definitions.length} games`);
 check('All registered multiplayer games have a concrete gameplay route', uncovered.length === 0, uncovered.length ? `uncovered: ${uncovered.join(', ')}` : 'all routed');
