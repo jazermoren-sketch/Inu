@@ -3,8 +3,9 @@ const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = 
 const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
 const { startArcadeGame, handleArcadeInteraction, arcadeEmbed, arcadeComponents } = require('./arcade-games');
 const { handleSoloMessage } = require('./solo-games');
+const channelConfig = require('./channel-config');
 
-// GAMINGHUB_BATCH_V3
+// GAMINGHUB_BATCH_V4
 const lobbies = new Map();
 const games = new Map();
 
@@ -57,12 +58,14 @@ function lobbyButtons(id) {
 function setupGameCenterBatch(client) {
   client.on('messageCreate', async message => {
     try {
+      if (!message.guildId || !channelConfig.isAllowed(message.guildId, message.channelId)) return;
       if (await handleSoloMessage(message)) return;
       await handleTextMessage(message);
     } catch (error) { console.error('Game message error:', error); }
   });
 
   client.on('interactionCreate', async interaction => {
+    if (!interaction.guildId || !channelConfig.isAllowed(interaction.guildId, interaction.channelId)) return;
     if (await handleBoardInteraction(interaction)) return;
     if (await handleArcadeInteraction(interaction)) return;
     if (!interaction.isChatInputCommand()) return;
@@ -80,6 +83,7 @@ function setupGameCenterBatch(client) {
 
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton() || !interaction.customId.startsWith('gh_')) return;
+    if (!interaction.guildId || !channelConfig.isAllowed(interaction.guildId, interaction.channelId)) return interaction.reply({ content: '❌ GamingHub ما مسموحش فهاد القناة.', ephemeral: true });
     const [, action, id] = interaction.customId.split('_');
     const lobby = lobbies.get(id);
     if (!lobby) return interaction.reply({ content: '❌ هاد الـLobby سالات.', ephemeral: true });
