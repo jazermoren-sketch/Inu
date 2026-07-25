@@ -14,11 +14,13 @@ const {
 } = require("discord.js");
 
 const fs = require("fs");
+const { setupQuizBattle } = require("../games/quiz-battle"); // QUIZ_BATTLE_MODULE
 const path = require("path");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
+setupQuizBattle(client); // QUIZ_BATTLE_MODULE
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const DB_FILE = path.join(DATA_DIR, "database.json");
