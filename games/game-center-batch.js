@@ -3,9 +3,10 @@ const { startBoardGame, handleBoardInteraction, boardEmbed, boardComponents } = 
 const { startTextGame, handleTextMessage, textGameEmbed } = require('./text-games');
 const { startArcadeGame, handleArcadeInteraction, arcadeEmbed, arcadeComponents } = require('./arcade-games');
 const { handleSoloMessage } = require('./solo-games');
+const { startExtraGame, handleExtraMessage, finishExtraGame, extraEmbed } = require('./extra-games');
 const channelConfig = require('./channel-config');
 
-// GAMINGHUB_BATCH_V5
+// GAMINGHUB_BATCH_V6
 const lobbies = new Map();
 const games = new Map();
 
@@ -82,6 +83,7 @@ function setupGameCenterBatch(client) {
     try {
       if (!message.guildId || !channelConfig.isAllowed(message.guildId, message.channelId)) return;
       if (await handleSoloMessage(message)) return;
+      if (handleExtraMessage(message)) return;
       await handleTextMessage(message);
     } catch (error) { console.error('Game message error:', error); }
   });
@@ -170,6 +172,11 @@ function setupGameCenterBatch(client) {
       if (lobby.game === 'higherlower' || lobby.game === 'dice' || lobby.game === 'memory' || lobby.game === 'blackjack') {
         const arcadeGame = startArcadeGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
         return interaction.update({ content: '', embeds: [arcadeEmbed(arcadeGame)], components: arcadeComponents(arcadeGame) });
+      }
+      if (['impostor', 'reaction', 'emoji', 'trivia', 'treasure', 'speedquiz'].includes(lobby.game)) {
+        const extraGame = startExtraGame({ id, type: lobby.game, channelId: lobby.channelId, players: [...lobby.players] });
+        finishExtraGame(client, extraGame);
+        return interaction.update({ content: '', embeds: [extraEmbed(extraGame, '🎮 اللعبة بدات! أول جواب صحيح كيربح الجولة.')], components: [] });
       }
       return interaction.update({ content: `${definition.emoji} **${definition.name} بدات!**`, embeds: [], components: [] });
     }
